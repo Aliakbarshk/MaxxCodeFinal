@@ -3,34 +3,50 @@ const path = require('path');
 const mongoose = require('mongoose');
 const User = require('./models/User.cjs');
 
+const os = require('os');
 let isMongoConnected = false;
-const fallbackDir = path.join(__dirname, 'data');
+
+// On Vercel / serverless, filesystem is read-only; use os.tmpdir()
+const isServerless = !!process.env.VERCEL || !!process.env.AWS_LAMBDA_FUNCTION_NAME;
+const fallbackDir = isServerless
+  ? path.join(os.tmpdir(), 'maxxcode-data')
+  : path.join(__dirname, 'data');
 const fallbackFilePath = path.join(fallbackDir, 'users.json');
 
-// Ensure fallback directory and file exist
-if (!fs.existsSync(fallbackDir)) {
-  fs.mkdirSync(fallbackDir, { recursive: true });
-}
-if (!fs.existsSync(fallbackFilePath)) {
-  fs.writeFileSync(fallbackFilePath, JSON.stringify([], null, 2));
+// In-memory fallback if disk is completely unavailable
+let memoryUsers = [];
+
+// Ensure fallback directory and file exist safely
+try {
+  if (!fs.existsSync(fallbackDir)) {
+    fs.mkdirSync(fallbackDir, { recursive: true });
+  }
+  if (!fs.existsSync(fallbackFilePath)) {
+    fs.writeFileSync(fallbackFilePath, JSON.stringify([], null, 2));
+  }
+} catch (e) {
+  // Silent fallback to memoryUsers on read-only environments
 }
 
-// Fallback JSON helpers
+// Fallback helpers
 const readFallbackUsers = () => {
   try {
-    const raw = fs.readFileSync(fallbackFilePath, 'utf8');
-    return JSON.parse(raw) || [];
+    if (fs.existsSync(fallbackFilePath)) {
+      const raw = fs.readFileSync(fallbackFilePath, 'utf8');
+      return JSON.parse(raw) || memoryUsers;
+    }
   } catch (e) {
-    console.error('Error reading fallback storage:', e.message);
-    return [];
+    // Ignore read errors
   }
+  return memoryUsers;
 };
 
 const writeFallbackUsers = (users) => {
+  memoryUsers = users;
   try {
     fs.writeFileSync(fallbackFilePath, JSON.stringify(users, null, 2));
   } catch (e) {
-    console.error('Error writing fallback storage:', e.message);
+    // Disk write may fail on serverless; memoryUsers is already updated
   }
 };
 
