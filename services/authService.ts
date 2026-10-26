@@ -3,6 +3,18 @@ import { AuthUser, UserState } from '../types';
 const TOKEN_KEY = 'maxxcode_auth_token_v1';
 const USER_KEY = 'maxxcode_auth_user_v1';
 
+const safeJson = async (res: Response) => {
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      success: false,
+      error: `Server returned an invalid response (Status ${res.status}). If on Vercel, please make sure the latest serverless api files and environment variables are deployed.`,
+    };
+  }
+};
+
 export const authService = {
   getToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
@@ -44,7 +56,7 @@ export const authService = {
         }),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok || !data.success) {
         return { success: false, error: data.error || 'Failed to register' };
       }
@@ -65,7 +77,7 @@ export const authService = {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok || !data.success) {
         return { success: false, error: data.error || 'Invalid credentials' };
       }
@@ -89,7 +101,7 @@ export const authService = {
         },
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok || !data.success) {
         this.clearSession();
         return { success: false, error: data.error || 'Session expired' };
@@ -116,7 +128,7 @@ export const authService = {
         body: JSON.stringify(progress),
       });
 
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok || !data.success) {
         return { success: false, error: data.error || 'Sync failed' };
       }
@@ -131,7 +143,7 @@ export const authService = {
   async getStatus(): Promise<{ success: boolean; isAtlasConnected: boolean; engine: string }> {
     try {
       const res = await fetch('/api/auth/status');
-      const data = await res.json();
+      const data = await safeJson(res);
       return data;
     } catch {
       return { success: false, isAtlasConnected: false, engine: 'Offline' };

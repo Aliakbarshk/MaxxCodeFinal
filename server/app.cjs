@@ -28,11 +28,19 @@ app.use(async (req, res, next) => {
   next();
 });
 
-// Routes
+// Mount routes on both /api/auth and /auth for compatibility with Vercel serverless rewrites
 app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
-// Health check
+// Health check endpoints
 app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    app: 'MaXxCode API Server',
+    timestamp: new Date().toISOString(),
+  });
+});
+app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     app: 'MaXxCode API Server',
