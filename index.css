@@ -1,0 +1,6 @@
+/* MaXxCode Base Stylesheet */
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+}
